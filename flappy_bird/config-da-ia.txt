@@ -1,0 +1,138 @@
+# INFORMAÇÕES GERAIS:
+# A rede neural NEAT possui Inputs que são alterados por nós
+# e genes (mais precisamente, pelos valores definidos neles), os quais retornam um output, o qual é usado para
+dar uma resposta em frente aos inputs colocados.
+# Por exemplo, para o Flappy Bird, podemos definir os inputs como distâncias relativas:
+# ao solo e aos canos verdes. Conhecendo a distância, o pássaro deverá tomar uma decisão (como um humano faria).
+# Os genes são parâmetros que alteram os valores recebidos pelo input. O resultado dessa alteração deve ser concatenada
+# de alguma forma matemática: podemos SOMAR os valores, MULTIPLICAR, DIVIDIR, etc.
+# O resultado dessas alterações é o chamado OUTPUT. Com o OUTPUT, há um conjunto de decisões, no caso do Flappy Bird há
+# apenas duas: pular ou não pular, que podem ser tomadas. Para ajudar na escolha, podemos definir uma função que
+# imponha uma restrição no significado dos valores, como a função tangente hiperbólica, a qual restringe os infinitos
+# valores do eixo x (que vem do output) para uma escala de -1 a 1 no eixo Y (os intervalores de valor, ou até mesmo
+# valores específicos, são usados para dizer qual ação será tomada. É um "if/else" básico, if a == 1, faça Z, por ex.)
+# Após tomar uma série de decisões, neste contexto, os pássaros avançaram mais ou menos, em uma disposição, inicial
+# mente, aleatória. Aqueles que se aproximarem mais do objetivo definido "fitness_criterion" serão selecionados para a
+# próxima geração. Na próxima geração, as características iniciais dos pássaros sofrerão pequenas mutações, definidas
+# pelo programador. Assim, reinicia-se o processo.
+# OBS: O processo se assemelha à Seleção Natural Moderna. Portanto, inclui-se as exceções conheicas. Por exemplo, existe
+# sempre uma pequena chance de que indivíduos menos aptos ainda assim sejam selecionados. Quanto maior a população, mais
+# provável é encontrarmos o evento improvável.
+# IMPORTANTE: o OUTPUT é alterado por um valor conhecido como "bias", que fornece maior variabilidade na distribuição
+# das espécies. Sem ele, às vezes, é impossível se chegar ao resultado desejado.
+
+[NEAT]
+fitness_criterion     = max   # Objetivo do jogo: maximizar pontuação
+fitness_threshold     = 1000  # Pontuação máxima a partir da qual encerramos o jogo (pressupõe o bird imortal)
+pop_size              = 100   # Tamanho populacional, quanto +, + efetivo tende a ser o código (e mais computação exige)
+reset_on_extinction   = False # Se True, não dá erro, se False, dá erro caso todas as espécies forem extintas (platô)
+
+[DefaultGenome] # Parâmetros dos nós dos genes das espécies
+# node activation options
+activation_default      = tanh  # Define uma tangente hiperbólica que restringe os resultados para os n valores dos nós.
+activation_mutate_rate  = 0.0   # Define a taxa de mutação da função principal (tanh), neste caso, queremos fixá-la.
+activation_options      = tanh  # Opções de ativação de função, como dito, queremos apenas a tangente hiperbólica.
+
+# node aggregation options
+aggregation_default     = sum   # Define que os valores obtidos pelos genomas deverão ser somados
+aggregation_mutate_rate = 0.0   # Define a taxa de alteração do formato de agregação dos valores obtidos pelos genomas.
+aggregation_options     = sum   # São as opções para a agregação, como vê-se pelos valores anteriores, quer-se apenas S.
+
+# node bias options # Configuração do viés
+bias_init_mean          = 0.0   # Especifica a média do "bias" da primeira população. Assim, espera-se 0 bias no começo.
+bias_init_stdev         = 1.0   # Define o desvio padrão do bias (permite o bias mudar, neste contexto)
+bias_max_value          = 30.0  # Maior valor que o bias pode assumir.
+bias_min_value          = -30.0 # Menor valor que o bias pode assumir.
+bias_mutate_power       = 0.5   # Determina a força da mutação (se queremos 100% dela ou não). (Se for "30", vira "15").
+bias_mutate_rate        = 0.7   # Determina a taxa da mutação (Em 100 pássaros, espera-se mutação em 70 deles).
+bias_replace_rate       = 0.1   # Chance de mudar o valor do bias anterior (permite ao bias mudar em qualquer contexto)
+# IMPORTANTE: o bias_replace_rate rompe (ou pode romper) com as regras anteriores, permitindo que um novo bias surja
+# totalmente desconexo das taxas e parâmetros de mutação definidos - mas ainda continua sujeito ao intervalo do bias.
+
+# genome compatibility options  # Define o intervalo genético que diz se 2 indivíduos são != ou == espécies.
+compatibility_disjoint_coefficient = 1.0    #   Avalia as diferenças entre os genomas de dois indivíduos com genomas !=
+compatibility_weight_coefficient   = 0.5    # Avalia o impacto da diferença de genome na percepção de ser ou não == pop.
+# Explicando melhor: a associação de "disjoint" com "weight" irá nos definir se dois indivíduos são ou não da mesma
+# espécie. "disjoint" apenas vê se há genes distintos. Enquanto "weight" dá um peso para a diferença na carga genética.
+# Se houver muita distinção de genes, ainda que o peso da diferença da carga genética seja pequeno, temos dois indivídu
+# os de != espécies. Se o peso da diferença de carga genética for alto, então ainda que o coeficiente de distinção de
+# genes seja baixo, poucos genes com pequenas distinções entre si poderão declarar um indivíduo de outra espécie.
+# OBS: A avaliação final se dá sobre o "limiar de compatibilidade" definido.
+
+# connection add/remove rates   # Define a probabilidade de alterar o padrão neural
+conn_add_prob           = 0.5   # Probailidade de adicionar uma nova conexão neural (linha) ENTRE 2 NÓS PRÉ-EXISTENTES.
+conn_delete_prob        = 0.5   # Probabilidade de remover uma conexão neural (linha) ENTRE 2 NÓS PRÉ-EXISTENTES.
+# Se todas as conexões de um nó forem removidas, ele se torna um nó isolado, logo, inútil.
+# Isso não removerá o nó. No entanto, você pode adicionar parâmetros que aumenta a probabilidade de podar nós isolados.
+# O processo de criar nós também não cria novos nós, como destacado. Somente cria conexões entre nós pré-existentes.
+
+# connection enable options
+enabled_default         = True  # Diz se as conexões serão ativadas (True) ou não (False)
+enabled_mutate_rate     = 0.01  # Define a probabilidade de o estado de uma conexão (T/F) ser alterado.
+# IMPORTANTE: connection options difere-se de connection add/remover rates porque no primeiro caso as conexões são
+# completamente perdidos nas alterações deletéiras, por outro lado, no segundo caso há uma "quarentena" que permite ao
+# algoritmo NEAT testar a rede neural com e sem uma determinada conexão, avaliando sua necessidade.
+
+feed_forward            = True  # Define a direção da informação. True = unidirecional. False = permite ciclos, memória.
+initial_connection      = full  # Define se as conexões iniciais estarão  conectadas ao output (full) || não.
+# Detalhamento: inteligências como o ChaGPT tem feed_forward = False, pois eles precisam criar uma rede neural que lhes
+# permite ter uma "memória", pois os resultados anteriores influenciam nos resultados futuros. Neste caso, a informação
+# pode mover-se unidirecionalmente.
+
+# node add/remove rates # Define a probabilidade de surgir ou sumir nós
+node_add_prob           = 0.2   # Probabilidade de surgir nó
+node_delete_prob        = 0.2   # Probabilidade de um nó sumir.
+
+# network parameters    # Define o design da rede neural, essencial para o algortimo.
+num_hidden              = 0 # Define, inicialmente, quantos nós intermediários há.
+num_inputs              = 3 # Define, inicialmente, quantos inputs há.
+num_outputs             = 1 # Define, inicialmente, quantos outputs há.
+
+# node response options # Define o fator multiplicativo DE TODOS OS NÓS, inclusive do output
+response_init_mean      = 1.0   # Define por qual valor o output, antes de ser subtraído pelo "bias", é multiplicado.
+response_init_stdev     = 0.0   # Define o desvio padrão do valor de multiplicação
+response_max_value      = 30.0  # Valor máximo que o output pode alcançar após ser multiplicado.
+response_min_value      = -30.0 # Valor mínimo que o output pode alcançar após ser multiplicado.
+response_mutate_power   = 0.0   # Força da mutação do fator multiplicativo (se 0.5, exemplo, se change é +2, vira +1).
+response_mutate_rate    = 0.0   # Define a probabilidade de haver mutação no fator multiplicativo.
+response_replace_rate   = 0.0   # Ignora os parâmetros de força e mutabilidade, dá a chance de surgir um novo fator *.
+# Detalhamento: Assemelha-se aos dados do "bias" discutido acima.
+
+# connection weight options # Define os valores e a variabilidade do valor dos pesos das conexões.
+weight_init_mean        = 0.0   # Define a média dos pesos iniciais
+weight_init_stdev       = 1.0   # Define o desvio padrão para os pesos iniciais
+weight_max_value        = 30    # Valor máximo de um peso
+weight_min_value        = -30   # Valor mínimo de um peso
+weight_mutate_power     = 0.5   # Magnitude da mutação de um peso (como em exemplos anteriores, se 0.5, 2 vira 1).
+weight_mutate_rate      = 0.8   # Taxa de mutação dos pesos
+weight_replace_rate     = 0.1   # Probabilidade de ignorar a taxa de mutação e o poder dela e gerar um valor random.
+
+[DefaultSpeciesSet] # Limiar de compatibilidade
+compatibility_threshold = 3.0   # Limiar de compatibilidade em relação ao genoma dos indivíduos (discutido antes).
+
+
+[DefaultStagnation] # Define os parâmetros para considerar a Evolução estagnada
+species_fitness_func = max  # Define o objetivo de cada espécie (maximizar a pontuação)
+max_stagnation       = 20   # Define o número máximo de gerações de uma espécie sem ter um algm que bata o melhor init.
+species_elitism      = 2    # Define quantos indivíduos sobrarão em uma extinção de uma população.
+# Detalhamento:
+# Define-se aqui a função das espécies, o limite de gerações estagnadas e quantos indivíduos sobrevivem no caso de haver
+# uma extinção - a EXTINÇÃO ocorre caso haja "max_stagnation" de uma espécie.
+
+[DefaultReproduction]   # Define os parâmetros de reprodução
+elitism            = 2  # Define quantos dos melhores pássaros passarão para a próxima geração
+survival_threshold = 0.2    # Define a porcentagem do sucesso reprodutivo de uma espécie
+# Sobre "survival_threshold", caso uma espécie domine a comunidade, é importante impedi-la de reproduzir-se em descon
+# trole, pois isso reduziria a diversidade genética. Ou seja, aqui, os perdores também tem (ou podem ter) vez.
+
+Equação da saída de um nó (válida para todos os nós):
+y=f(∑(wi∗x i)+b)
+y = valor da saída do nó
+f = função de ativação do nó (neste contexto, é a tangente hiperbólica, tanh)
+wi = pesos das conexões de entrada
+xi = valores de entrada
+b = bias
+# OBS: Para os inputs, em feed_forward = True, não há somatória. O somatório ocorre em possíveis nós
+# intermediários e no nó de OUTPUT, supondo-se mais de uma conexão nesses nós. Nesses casos, cada conexão tem
+# seu próprio "wi" e o "xi" se torna o "y" do último e respectivo nó. No entanto, o nó que recebe esses vários
+# valores usará o bias "b" apenas ao final do somatório dos produtos e uma única vez.
