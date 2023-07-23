@@ -1,6 +1,10 @@
 import pygame
 import os
 import random
+import neat
+
+ai_jogando = True   # Se quiser jogar você mesmo, troque para False
+geracao = 0  # Inicialmente, não temos geração alguma
 
 TELA_LARGURA = 500
 TELA_ALTURA = 800
@@ -169,12 +173,37 @@ def desenhar_tela(tela, passaros, canos, chao, pontos):
 
     texto = FONTE_PONTOS.render(f"Pontuação: {pontos}", True, (255, 255, 255))
     tela.blit(texto, (TELA_LARGURA - 10 - texto.get_width(), 10))
+
+    if ai_jogando:
+        texto = FONTE_PONTOS.render(f"Geração: {geracao}", True, (255, 255, 255))
+        tela.blit(texto, (10, 10))
+
+
     chao.desenhar(tela)
     pygame.display.update()
 
 
-def main():
-    passaros = [Passaro(230, 350)]
+def main(genomas, config): # fitness_function
+    global geracao
+    geracao += 1    # A cada vez que o jogo é executado pela IA, temos uma nova geração
+
+    # IMPORTANTE:
+    # Em NEAT, a lista "genomas" é uma lista de tuplas no formato:
+    # (IdGenoma, genoma)
+    # Como não queremos pegar o "IdGenoma", explicitamos isso por meio de "_".
+    if ai_jogando:
+        redes = list()
+        lista_genomas = list()
+        passaros = list()
+        for _,  genoma in genomas:  # Baseado no parâmetro pop_size
+            rede = neat.nn.FeedForwardNetwork.create(genoma, config)
+            redes.append(rede)
+            genoma.fitness = 0  # Não vamos tomar pontuação jogo = pontuação espécie, é melhor ter + parâmetros tbm
+            lista_genomas.append(genoma)
+            passaros.append(Passaro(230, 350))
+
+    else:
+        passaros = [Passaro(230, 350)]
     chao = Chao(730)
     canos = [Cano(700)]
     tela = pygame.display.set_mode((TELA_LARGURA, TELA_ALTURA))
@@ -191,14 +220,29 @@ def main():
                 rodando = False
                 pygame.quit()
                 quit()
-            if evento.type == pygame.KEYDOWN:
-                if evento.key == pygame.K_SPACE:
-                    for passaro in passaros:
-                        passaro.pular()
+            if not ai_jogando:
+                if evento.type == pygame.KEYDOWN:
+                    if evento.key == pygame.K_SPACE:
+                        for passaro in passaros:
+                            passaro.pular()
+
+        indice_cano = 0 # Primeiro cano
+        if len(passaros) > 0:
+            if len(canos) > 1 and passaros[0].x > (canos[0].x + canos[0].CANO_TOPO.get_width()):
+                indice_cano = 1  # Se houver + de 1 cano e ainda houver pássaros vivos, o cano que será analisado pelo
+                # pássaros é sempre o segundo, desde que ele tenha passado pelo primeiro.
+
+        else:
+            rodando = False
+            break
 
         # mover as coisas
-        for passaro in passaros:
+        for i, passaro in enumerate(passaros):
             passaro.mover()
+
+            lista_genomas[i].fitness += 0.1
+            output = redes[i].activate()
+            
         chao.mover()
 
         adicionar_cano = False
@@ -225,6 +269,9 @@ def main():
                 passaros.pop(i)
 
         desenhar_tela(tela, passaros, canos, chao, pontos)
+
+def rodar():
+    pass
 
 
 if __name__ == '__main__':
